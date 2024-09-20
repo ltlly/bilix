@@ -360,7 +360,7 @@ class VideoInfo(BaseModel):
 
 
 def _parse_bv_html(url, html: str) -> VideoInfo:
-    init_info = re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', html).groups()[0]  # this line may raise
+    init_info = re.search(r'<script>window.__INITIAL_STATE__=({.*?});\(', html).groups()[0]  # this line may raise
     init_info = json.loads(init_info)
     if len(init_info.get('error', {})) > 0:
         raise APIResourceError("视频已失效", url)  # 啊叻？视频不见了？在分区下载的时候可能产生
@@ -382,7 +382,7 @@ def _parse_bv_html(url, html: str) -> VideoInfo:
         pages.append(Page(p_name=p_name, p_url=p_url))
     # extract dash and flv_url
     dash, other = None, []
-    play_info = re.search('<script>window.__playinfo__=({.*})</script><script>', html).groups()[0]
+    play_info = re.search('<script>window.__playinfo__=({.*?})</script><script>', html).groups()[0]
     play_info = json.loads(play_info)['data']
     try:
         dash = Dash.from_dict(play_info)
