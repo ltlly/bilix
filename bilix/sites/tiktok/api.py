@@ -14,10 +14,12 @@ from bilix.utils import legal_title
 from bilix.download.utils import req_retry, raise_api_error
 
 dft_client_settings = {
-    'headers': {'user-agent': 'com.ss.android.ugc.trill/494+Mozilla/5.0+(Linux;+Android+12;'
-                              '+2112123G+Build/SKQ1.211006.001;+wv)+AppleWebKit/537.36+'
-                              '(KHTML,+like+Gecko)+Version/4.0+Chrome/107.0.5304.105+Mobile+Safari/537.36'},
-    'http2': True
+    "headers": {
+        "user-agent": "com.ss.android.ugc.trill/494+Mozilla/5.0+(Linux;+Android+12;"
+        "+2112123G+Build/SKQ1.211006.001;+wv)+AppleWebKit/537.36+"
+        "(KHTML,+like+Gecko)+Version/4.0+Chrome/107.0.5304.105+Mobile+Safari/537.36"
+    },
+    "http2": True,
 }
 
 
@@ -33,32 +35,49 @@ class VideoInfo(BaseModel):
 
 @raise_api_error
 async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
-    if short_url := re.findall(r'https://www.tiktok.com/t/\w+/', url):
+    if short_url := re.findall(r"https://www.tiktok.com/t/\w+/", url):
         res = await req_retry(client, short_url[0], follow_redirects=True)
         url = str(res.url)
-    if key := re.search(r'/video/(\d+)', url):
+    if key := re.search(r"/video/(\d+)", url):
         key = key.groups()[0]
     else:
         key = re.search(r"/v/(\d+)", url).groups()[0]
-    params = {'aweme_id': key, 'aid': 1180, 'iid': 6165993682518218889,
-              'device_id': random.randint(10 * 10 * 10, 9 * 10 ** 10)}
-    res = await req_retry(client, 'https://api16-normal-c-useast1a.tiktokv.com/aweme/v1/feed/', params=params)
+    params = {
+        "aweme_id": key,
+        "aid": 1180,
+        "iid": 6165993682518218889,
+        "device_id": random.randint(10 * 10 * 10, 9 * 10**10),
+    }
+    res = await req_retry(
+        client,
+        "https://api16-normal-c-useast1a.tiktokv.com/aweme/v1/feed/",
+        params=params,
+    )
     data = json.loads(res.text)
-    data = data['aweme_list'][0]
+    data = data["aweme_list"][0]
     # 视频标题 (如果为空则使用分享标题)
-    title = legal_title(data['desc'] if data['desc'] != '' else data['share_info']['share_title'])
+    title = legal_title(
+        data["desc"] if data["desc"] != "" else data["share_info"]["share_title"]
+    )
     # 视频作者昵称
-    author_name = data['author']['nickname']
+    author_name = data["author"]["nickname"]
     # 有水印视频链接
-    wm_urls = data['video']['download_addr']['url_list']
+    wm_urls = data["video"]["download_addr"]["url_list"]
     # 无水印视频链接
-    nwm_urls = data['video']['bit_rate'][0]['play_addr']['url_list']
+    nwm_urls = data["video"]["bit_rate"][0]["play_addr"]["url_list"]
     # 视频封面
-    cover = data['video']['cover']['url_list'][0]
+    cover = data["video"]["cover"]["url_list"][0]
     # 视频动态封面
-    dynamic_cover = data['video']['dynamic_cover']['url_list'][0]
+    dynamic_cover = data["video"]["dynamic_cover"]["url_list"][0]
     # 视频原始封面
-    origin_cover = data['video']['origin_cover']['url_list'][0]
-    video_info = VideoInfo(title=title, author_name=author_name, wm_urls=wm_urls, nwm_urls=nwm_urls, cover=cover,
-                           dynamic_cover=dynamic_cover, origin_cover=origin_cover)
+    origin_cover = data["video"]["origin_cover"]["url_list"][0]
+    video_info = VideoInfo(
+        title=title,
+        author_name=author_name,
+        wm_urls=wm_urls,
+        nwm_urls=nwm_urls,
+        cover=cover,
+        dynamic_cover=dynamic_cover,
+        origin_cover=origin_cover,
+    )
     return video_info

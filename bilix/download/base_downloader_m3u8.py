@@ -14,24 +14,24 @@ from bilix.download.utils import path_check, merge_files
 from bilix import ffmpeg
 from .utils import req_retry
 
-__all__ = ['BaseDownloaderM3u8']
+__all__ = ["BaseDownloaderM3u8"]
 
 
 class BaseDownloaderM3u8(BaseDownloader):
     """Base Async http m3u8 Downloader"""
 
     def __init__(
-            self,
-            *,
-            client: httpx.AsyncClient = None,
-            browser: str = None,
-            speed_limit: Union[float, int] = None,
-            stream_retry: int = 5,
-            progress=None,
-            logger=None,
-            # unique params
-            part_concurrency: int = 10,
-            video_concurrency: Union[int, asyncio.Semaphore] = 3,
+        self,
+        *,
+        client: httpx.AsyncClient = None,
+        browser: str = None,
+        speed_limit: Union[float, int] = None,
+        stream_retry: int = 5,
+        progress=None,
+        logger=None,
+        # unique params
+        part_concurrency: int = 10,
+        video_concurrency: Union[int, asyncio.Semaphore] = 3,
     ):
         super(BaseDownloaderM3u8, self).__init__(
             client=client,
@@ -39,17 +39,24 @@ class BaseDownloaderM3u8(BaseDownloader):
             stream_retry=stream_retry,
             speed_limit=speed_limit,
             progress=progress,
-            logger=logger
+            logger=logger,
         )
-        self.v_sema = asyncio.Semaphore(video_concurrency) if isinstance(video_concurrency, int) else video_concurrency
+        self.v_sema = (
+            asyncio.Semaphore(video_concurrency)
+            if isinstance(video_concurrency, int)
+            else video_concurrency
+        )
         self.part_concurrency = part_concurrency
         self.decrypt_cache = {}
 
     async def _decrypt(self, seg: m3u8.Segment, content: bytearray):
         async def get_key():
             key_bytes = (await req_retry(self.client, uri)).content
-            iv = bytes.fromhex(seg.key.iv.replace('0x', '')) if seg.key.iv is not None else \
-                seg.custom_parser_values['iv']
+            iv = (
+                bytes.fromhex(seg.key.iv.replace("0x", ""))
+                if seg.key.iv is not None
+                else seg.custom_parser_values["iv"]
+            )
             return AES.new(key_bytes, AES.MODE_CBC, iv)
 
         uri = seg.key.absolute_uri
@@ -67,11 +74,15 @@ class BaseDownloaderM3u8(BaseDownloader):
         if not m3u8_info.base_uri:
             m3u8_info.base_uri = m3u8_url
         if m3u8_info.is_variant:
-            self.logger.debug(f"m3u8 is variant, use first playlist: {m3u8_info.playlists[0].absolute_uri}")
+            self.logger.debug(
+                f"m3u8 is variant, use first playlist: {m3u8_info.playlists[0].absolute_uri}"
+            )
             return await self.to_invariant_m3u8(m3u8_info.playlists[0].absolute_uri)
         return m3u8_info
 
-    async def get_m3u8_video(self, m3u8_url: str, path: Union[str, Path], time_range: Tuple[int, int] = None) -> Path:
+    async def get_m3u8_video(
+        self, m3u8_url: str, path: Union[str, Path], time_range: Tuple[int, int] = None
+    ) -> Path:
         """
         download video from m3u8 url
         :cli: short: m3u8
@@ -81,7 +92,7 @@ class BaseDownloaderM3u8(BaseDownloader):
         :return: downloaded file path
         """
         if path.is_dir():
-            path = (path / PurePath(urlparse(m3u8_url).path).stem).with_suffix('.mp4')
+            path = (path / PurePath(urlparse(m3u8_url).path).stem).with_suffix(".mp4")
         if time_range:
             path = path.with_stem(f"{path.stem}-{time_range[0]}-{time_range[1]}")
         exist, path = path_check(path)
@@ -112,14 +123,26 @@ class BaseDownloaderM3u8(BaseDownloader):
                     total_time += seg.duration
                     # https://stackoverflow.com/questions/50628791/decrypt-m3u8-playlist-encrypted-with-aes-128-without-iv
                     if seg.key and seg.key.iv is None:
-                        seg.custom_parser_values['iv'] = idx.to_bytes(16, 'big')
-                    cors.append(self._get_seg(seg, path.with_name(f"{path.stem}-{idx}.ts"), task_id, p_sema))
+                        seg.custom_parser_values["iv"] = idx.to_bytes(16, "big")
+                    cors.append(
+                        self._get_seg(
+                            seg,
+                            path.with_name(f"{path.stem}-{idx}.ts"),
+                            task_id,
+                            p_sema,
+                        )
+                    )
             if len(cors) == 0 and time_range:
-                raise Exception(f"time range <{start_time}-{end_time}> invalid for <{path.name}>")
+                raise Exception(
+                    f"time range <{start_time}-{end_time}> invalid for <{path.name}>"
+                )
             if init_sec := m3u8_info.segments[0].init_section:
+
                 async def _get_init():
                     r = await req_retry(self.client, init_sec.absolute_uri)
-                    async with aiofiles.open(fn := path.with_name(f"{path.stem}-init"), 'wb') as f:
+                    async with aiofiles.open(
+                        fn := path.with_name(f"{path.stem}-init"), "wb"
+                    ) as f:
                         await f.write(r.content)
                         return fn
 
@@ -146,16 +169,25 @@ class BaseDownloaderM3u8(BaseDownloader):
             confirmed_t = time_part
             confirmed_b = update_size
         else:
-            confirmed_t = time_part + task.fields['confirmed_t']
-            confirmed_b = update_size + task.fields['confirmed_b']
-        predicted_total = task.fields['total_time'] * confirmed_b / confirmed_t
-        await self.progress.update(task_id, total=predicted_total, confirmed_t=confirmed_t, confirmed_b=confirmed_b)
+            confirmed_t = time_part + task.fields["confirmed_t"]
+            confirmed_b = update_size + task.fields["confirmed_b"]
+        predicted_total = task.fields["total_time"] * confirmed_b / confirmed_t
+        await self.progress.update(
+            task_id,
+            total=predicted_total,
+            confirmed_t=confirmed_t,
+            confirmed_b=confirmed_b,
+        )
 
-    async def _get_seg(self, seg: Segment, path: Path, task_id, p_sema: asyncio.Semaphore) -> Path:
+    async def _get_seg(
+        self, seg: Segment, path: Path, task_id, p_sema: asyncio.Semaphore
+    ) -> Path:
         exists, path = path_check(path)
         if exists:
             downloaded = os.path.getsize(path)
-            await self._update_task_total(task_id, time_part=seg.duration, update_size=downloaded)
+            await self._update_task_total(
+                task_id, time_part=seg.duration, update_size=downloaded
+            )
             await self.progress.update(task_id, advance=downloaded)
             return path
         seg_url = seg.absolute_uri
@@ -164,19 +196,27 @@ class BaseDownloaderM3u8(BaseDownloader):
             for times in range(1 + self.stream_retry):
                 content = bytearray()
                 try:
-                    async with self.client.stream("GET", seg_url,
-                                                  follow_redirects=True) as r, self._stream_context(times):
+                    async with self.client.stream(
+                        "GET", seg_url, follow_redirects=True
+                    ) as r, self._stream_context(times):
                         r.raise_for_status()
                         # pre-update total if content-length is provided and first time to get content
-                        if 'content-length' in r.headers and not content:
+                        if "content-length" in r.headers and not content:
                             await self._update_task_total(
-                                task_id, time_part=seg.duration, update_size=int(r.headers['content-length']))
+                                task_id,
+                                time_part=seg.duration,
+                                update_size=int(r.headers["content-length"]),
+                            )
                         async for chunk in r.aiter_bytes(chunk_size=self.chunk_size):
                             content.extend(chunk)
                             await self.progress.update(task_id, advance=len(chunk))
                             await self._check_speed(len(chunk))
-                    if 'content-length' not in r.headers:  # after-update total if content-length is not provided
-                        await self._update_task_total(task_id, time_part=seg.duration, update_size=len(content))
+                    if (
+                        "content-length" not in r.headers
+                    ):  # after-update total if content-length is not provided
+                        await self._update_task_total(
+                            task_id, time_part=seg.duration, update_size=len(content)
+                        )
                     break
                 except (httpx.HTTPStatusError, httpx.TransportError):
                     continue
@@ -186,7 +226,7 @@ class BaseDownloaderM3u8(BaseDownloader):
         # in case encrypted
         if seg.key:
             content = await self._decrypt(seg, content)
-        async with aiofiles.open(path, 'wb') as f:
+        async with aiofiles.open(path, "wb") as f:
             await f.write(content)
         return path
 

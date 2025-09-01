@@ -1,3 +1,3 @@
 from .downloader import DownloaderYinghuacd
 
-__all__ = ['DownloaderYinghuacd']
+__all__ = ["DownloaderYinghuacd"]

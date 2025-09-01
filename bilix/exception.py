@@ -44,4 +44,6 @@ class HandleMethodError(HandleError):
         self.method = method
 
     def __str__(self):
-        return f"For {self.executor_cls.__name__} method '{self.method}' is not available"
+        return (
+            f"For {self.executor_cls.__name__} method '{self.method}' is not available"
+        )

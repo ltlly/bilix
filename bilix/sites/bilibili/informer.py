@@ -35,23 +35,31 @@ class InformerBilibili(DownloaderBilibili):
     async def info_video(self, url: str):
         video_info = await api.get_video_info(self.client, url)
         if video_info.dash is None and video_info.other is None:
-            return logger.warning(f'{video_info.title} 需要大会员或该地区不支持')
+            return logger.warning(f"{video_info.title} 需要大会员或该地区不支持")
         elif video_info.other and video_info.dash is None:
             return rprint(video_info.other)  # todo: beautify durl info
 
         async def ensure_size(m: api.Media):
             if m.size is None:
-                res = await req_retry(self.client, m.base_url, method='GET', headers={'Range': 'bytes=0-1'})
-                m.size = int(res.headers['Content-Range'].split('/')[-1])
+                res = await req_retry(
+                    self.client,
+                    m.base_url,
+                    method="GET",
+                    headers={"Range": "bytes=0-1"},
+                )
+                m.size = int(res.headers["Content-Range"].split("/")[-1])
 
         dash = video_info.dash
-        cors = [ensure_size(m) for m in dash.videos] + [ensure_size(m) for m in dash.audios]
+        cors = [ensure_size(m) for m in dash.videos] + [
+            ensure_size(m) for m in dash.audios
+        ]
         await asyncio.gather(*cors)
 
         tree = Tree(
             f"[bold reverse] {video_info.title}-{video_info.pages[video_info.p].p_name} [/]"
             f" {video_info.status.view:,}👀 {video_info.status.like:,}👍 {video_info.status.coin:,}🪙",
-            guide_style="bold cyan")
+            guide_style="bold cyan",
+        )
         video_tree = tree.add("[bold]画面 Video")
         audio_tree = tree.add("[bold]声音 Audio")
         leaf_fmt = "codec: {codec:32} size: {size}"
@@ -65,7 +73,11 @@ class InformerBilibili(DownloaderBilibili):
                 p_tree.style = "rgb(242,93,142)"
                 p_tree.add("需要登录或大会员")
         # for audio
-        name_map = {"default": "默认音质", "dolby": "杜比全景声 Dolby", "flac": "Hi-Res无损"}
+        name_map = {
+            "default": "默认音质",
+            "dolby": "杜比全景声 Dolby",
+            "flac": "Hi-Res无损",
+        }
         for k in dash.audio_formats:
             sub_tree = audio_tree.add(name_map[k])
             if m := dash.audio_formats[k]:
@@ -77,8 +89,10 @@ class InformerBilibili(DownloaderBilibili):
 
     @classmethod
     def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
-        if cls.pattern.match(keys[0]) and 'info' == method:
-            informer = InformerBilibili(sess_data=options['cookie'], **kwargs_filter(cls, options))
+        if cls.pattern.match(keys[0]) and "info" == method:
+            informer = InformerBilibili(
+                sess_data=options["cookie"], **kwargs_filter(cls, options)
+            )
 
             # in order to maintain order
             async def temp():

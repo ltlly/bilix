@@ -16,12 +16,16 @@ class WebSocketProgress(CLIProgress):
     async def add_task(self, **kwargs):
         task_id = await super().add_task(**kwargs)
         asyncio.create_task(
-            self.broadcast(json.dumps({'method': 'add_task', 'task_id': task_id, **kwargs}))
+            self.broadcast(
+                json.dumps({"method": "add_task", "task_id": task_id, **kwargs})
+            )
         )
         return task_id
 
     async def update(self, task_id, **kwargs) -> None:
         await super().update(task_id, **kwargs)
         asyncio.create_task(
-            self.broadcast(json.dumps({'method': 'update', "task_id": task_id, **kwargs}))
+            self.broadcast(
+                json.dumps({"method": "update", "task_id": task_id, **kwargs})
+            )
         )

@@ -11,19 +11,18 @@ class DownloaderJable(BaseDownloaderM3u8):
     pattern = re.compile(r"^https?://([A-Za-z0-9-]+\.)*(jable\.tv)")
 
     def __init__(
-            self,
-            *,
-            client: httpx.AsyncClient = None,
-            browser: str = None,
-            speed_limit: Union[float, int] = None,
-            stream_retry: int = 5,
-            progress=None,
-            logger=None,
-            part_concurrency: int = 10,
-            video_concurrency: Union[int, asyncio.Semaphore] = 3,
-            # unique params
-            hierarchy: bool = True,
-
+        self,
+        *,
+        client: httpx.AsyncClient = None,
+        browser: str = None,
+        speed_limit: Union[float, int] = None,
+        stream_retry: int = 5,
+        progress=None,
+        logger=None,
+        part_concurrency: int = 10,
+        video_concurrency: Union[int, asyncio.Semaphore] = 3,
+        # unique params
+        hierarchy: bool = True,
     ):
         client = client or httpx.AsyncClient(**api.dft_client_settings)
         super(DownloaderJable, self).__init__(
@@ -49,11 +48,15 @@ class DownloaderJable(BaseDownloaderM3u8):
         """
         data = await api.get_actor_info(self.client, url)
         if self.hierarchy:
-            path /= data['actor_name']
+            path /= data["actor_name"]
             path.mkdir(parents=True, exist_ok=True)
-        await asyncio.gather(*[self.get_video(url, path, image) for url in data['urls']])
+        await asyncio.gather(
+            *[self.get_video(url, path, image) for url in data["urls"]]
+        )
 
-    async def get_video(self, url: str, path=Path("."), image=True, time_range: Tuple[int, int] = None):
+    async def get_video(
+        self, url: str, path=Path("."), image=True, time_range: Tuple[int, int] = None
+    ):
         """
         :cli: short: v
         :param url:
@@ -66,8 +69,18 @@ class DownloaderJable(BaseDownloaderM3u8):
         if self.hierarchy:
             path /= f"{video_info.avid} {video_info.actor_name}"
             path.mkdir(parents=True, exist_ok=True)
-        cors = [self.get_m3u8_video(m3u8_url=video_info.m3u8_url, path=path / f"{video_info.title}.mp4",
-                                    time_range=time_range)]
+        cors = [
+            self.get_m3u8_video(
+                m3u8_url=video_info.m3u8_url,
+                path=path / f"{video_info.title}.mp4",
+                time_range=time_range,
+            )
+        ]
         if image:
-            cors.append(self.get_static(video_info.img_url, path=path / video_info.title, ))
+            cors.append(
+                self.get_static(
+                    video_info.img_url,
+                    path=path / video_info.title,
+                )
+            )
         await asyncio.gather(*cors)

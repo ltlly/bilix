@@ -1,3 +1,3 @@
 from .downloader import DownloaderYhdmp
 
-__all__ = ['DownloaderYhdmp']
+__all__ = ["DownloaderYhdmp"]

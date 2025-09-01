@@ -12,18 +12,18 @@ from bilix.exception import APIError
 
 class DownloaderYinghuacd(BaseDownloaderM3u8):
     def __init__(
-            self,
-            *,
-            stream_client: httpx.AsyncClient = None,
-            api_client: httpx.AsyncClient = None,
-            browser: str = None,
-            speed_limit: Union[float, int] = None,
-            stream_retry: int = 5,
-            progress=None,
-            logger=None,
-            part_concurrency: int = 10,
-            video_concurrency: Union[int, asyncio.Semaphore] = 3,
-            hierarchy: bool = True,
+        self,
+        *,
+        stream_client: httpx.AsyncClient = None,
+        api_client: httpx.AsyncClient = None,
+        browser: str = None,
+        speed_limit: Union[float, int] = None,
+        stream_retry: int = 5,
+        progress=None,
+        logger=None,
+        part_concurrency: int = 10,
+        video_concurrency: Union[int, asyncio.Semaphore] = 3,
+        hierarchy: bool = True,
     ):
         stream_client = stream_client or httpx.AsyncClient()
         super(DownloaderYinghuacd, self).__init__(
@@ -41,8 +41,8 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
 
     def _after_seg(self, seg: Segment, content: bytearray) -> bytearray:
         # in case .png
-        if re.fullmatch(r'.*\.png', seg.absolute_uri):
-            _, _, content = content.partition(b'\x47\x40')
+        if re.fullmatch(r".*\.png", seg.absolute_uri):
+            _, _, content = content.partition(b"\x47\x40")
         return content
 
     async def get_series(self, url: str, path=Path("."), p_range: Sequence[int] = None):
@@ -57,13 +57,17 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
         if self.hierarchy:
             path /= video_info.title
             path.mkdir(parents=True, exist_ok=True)
-        cors = [self.get_video(u, path=path, video_info=video_info if u == url else None)
-                for _, u in video_info.play_info]
+        cors = [
+            self.get_video(u, path=path, video_info=video_info if u == url else None)
+            for _, u in video_info.play_info
+        ]
         if p_range:
             cors = cors_slice(cors, p_range)
         await asyncio.gather(*cors)
 
-    async def get_video(self, url: str, path=Path('.'), time_range=None, video_info=None):
+    async def get_video(
+        self, url: str, path=Path("."), time_range=None, video_info=None
+    ):
         """
         :cli: short: v
         :param url:
@@ -80,8 +84,12 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
         else:
             video_info = video_info
         name = legal_title(video_info.title, video_info.sub_title)
-        await self.get_m3u8_video(m3u8_url=video_info.m3u8_url, path=path / f'{name}.mp4', time_range=time_range)
+        await self.get_m3u8_video(
+            m3u8_url=video_info.m3u8_url,
+            path=path / f"{name}.mp4",
+            time_range=time_range,
+        )
 
     @classmethod
     def _decide_handle(cls, method: str, keys: Tuple[str, ...], options: dict):
-        return 'yinghuacd' in keys[0]
+        return "yinghuacd" in keys[0]

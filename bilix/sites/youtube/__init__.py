@@ -1,3 +1,3 @@
 from .downloader import DownloaderYoutube
 
-__all__ = ['DownloaderYoutube']
+__all__ = ["DownloaderYoutube"]

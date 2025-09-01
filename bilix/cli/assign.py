@@ -26,13 +26,18 @@ def kwargs_filter(obj: Union[type, Callable], kwargs: dict):
             p = sig.parameters[k]
             # check type hint
             try:
-                if p.annotation is inspect.Signature.empty or \
-                        isinstance(kwargs[k], p.annotation):
+                if p.annotation is inspect.Signature.empty or isinstance(
+                    kwargs[k], p.annotation
+                ):
                     return True
                 else:
-                    logger.debug(f"kwarg {k}:{kwargs[k]} has been drop due to type hint missmatch")
+                    logger.debug(
+                        f"kwarg {k}:{kwargs[k]} has been drop due to type hint missmatch"
+                    )
                     return False
-            except TypeError:  # https://peps.python.org/pep-0604/#isinstance-and-issubclass
+            except (
+                TypeError
+            ):  # https://peps.python.org/pep-0604/#isinstance-and-issubclass
                 # lower than 3.10, Union
                 # TypeError: Subscripted generics cannot be used with class and instance checks
                 return True
@@ -44,15 +49,15 @@ def kwargs_filter(obj: Union[type, Callable], kwargs: dict):
 
 def module_handle_funcs(module):
     """find and yield all handle func in module"""
-    attrs = getattr(module, '__all__', None)
+    attrs = getattr(module, "__all__", None)
     attrs = attrs or dir(module)
     for attr_name in attrs:
-        if attr_name.startswith('__'):
+        if attr_name.startswith("__"):
             continue
         executor_cls = getattr(module, attr_name)
         if not inspect.isclass(executor_cls):
             continue
-        handle_func = getattr(executor_cls, 'handle', None)
+        handle_func = getattr(executor_cls, "handle", None)
         if handle_func is None:
             continue
         yield handle_func
@@ -75,7 +80,9 @@ def auto_assemble(handle_func):
             kwargs = kwargs_filter(cor, options)
             cors = []
             for key in keys:
-                if not hasattr(cor, '__self__'):  # coroutine function has not bound to instance
+                if not hasattr(
+                    cor, "__self__"
+                ):  # coroutine function has not bound to instance
                     cors.append(cor(executor, key, **kwargs))  # bound executor to self
                 else:
                     cors.append(cor(key, **kwargs))
@@ -99,21 +106,21 @@ def longest_common_len(str1, str2):
 
 
 def find_sites():
-    sites_path = Path(__file__).parent.parent / 'sites'
+    sites_path = Path(__file__).parent.parent / "sites"
     for site in sites_path.iterdir():
-        if not site.is_dir() or not (site / '__init__.py').exists():
+        if not site.is_dir() or not (site / "__init__.py").exists():
             continue
         yield site
 
 
 def assign(cli_kwargs):
-    method = cli_kwargs.pop('method')
-    keys = cli_kwargs.pop('keys')
+    method = cli_kwargs.pop("method")
+    keys = cli_kwargs.pop("keys")
     options = cli_kwargs
     modules = [
         # path, cmp_key
-        ('download.base_downloader_m3u8', 'm3u8'),
-        ('download.base_downloader_part', 'file'),
+        ("download.base_downloader_m3u8", "m3u8"),
+        ("download.base_downloader_part", "file"),
     ]
     for site in find_sites():
         modules.append((f"sites.{site.name}", site.name))
@@ -136,7 +143,9 @@ def assign(cli_kwargs):
         except ImportError as e:
             logger.debug(f"duo to ImportError <{e}>, skip <module 'bilix.{module}'>")
             continue
-        logger.debug(f"import cost {time.time() - a:.6f} s <module '{module.__name__}'>")
+        logger.debug(
+            f"import cost {time.time() - a:.6f} s <module '{module.__name__}'>"
+        )
         exc = None
         for handle_func in module_handle_funcs(module):
             try:
@@ -149,6 +158,8 @@ def assign(cli_kwargs):
             executor, cor = res
             logger.debug(f"Assign to {executor.__class__.__name__}")
             return executor, cor
-        if exc is not None:  # for the module, some handler can handle, but method miss match
+        if (
+            exc is not None
+        ):  # for the module, some handler can handle, but method miss match
             raise exc
     raise HandleError(f"Can't find any handler for method: '{method}' keys: {keys}")

@@ -1,3 +1,3 @@
 from .downloader import DownloaderDouyin
 
-__all__ = ['DownloaderDouyin']
+__all__ = ["DownloaderDouyin"]

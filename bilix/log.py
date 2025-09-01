@@ -13,8 +13,8 @@ def get_logger():
         show_time=False,
         show_path=False,
         markup=True,
-        keywords=RichHandler.KEYWORDS + ['STREAM'],
-        rich_tracebacks=True
+        keywords=RichHandler.KEYWORDS + ["STREAM"],
+        rich_tracebacks=True,
     )
     # 设置日志格式
     formatter = logging.Formatter("{message}", style="{", datefmt="[%X]")

@@ -25,6 +25,6 @@ def singleton(cls):
 # singleton ProcessPoolExecutor to avoid recreation in spawn process
 SingletonPPE = singleton(partial(ProcessPoolExecutor, initializer=_init))
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     p = SingletonPPE(max_workers=5)
     p.shutdown()

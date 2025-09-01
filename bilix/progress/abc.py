@@ -25,27 +25,27 @@ class Progress(ABC):
 
     @abstractmethod
     async def add_task(
-            self,
-            description: str,
-            start: bool = True,
-            total: Optional[float] = None,
-            completed: int = 0,
-            visible: bool = True,
-            **fields,
+        self,
+        description: str,
+        start: bool = True,
+        total: Optional[float] = None,
+        completed: int = 0,
+        visible: bool = True,
+        **fields,
     ):
         """async add a task to progress"""
 
     @abstractmethod
     async def update(
-            self,
-            task_id,
-            *,
-            total: Optional[float] = None,
-            completed: Optional[float] = None,
-            advance: Optional[float] = None,
-            description: Optional[str] = None,
-            visible: Optional[bool] = None,
-            refresh: bool = False,
-            **fields: Any
+        self,
+        task_id,
+        *,
+        total: Optional[float] = None,
+        completed: Optional[float] = None,
+        advance: Optional[float] = None,
+        description: Optional[str] = None,
+        visible: Optional[bool] = None,
+        refresh: bool = False,
+        **fields: Any,
     ):
         """async update a task status"""

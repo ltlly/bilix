@@ -12,15 +12,15 @@ class DownloaderDouyin(BaseDownloaderPart):
     pattern = re.compile(r"^https?://([A-Za-z0-9-]+\.)*(douyin\.com)")
 
     def __init__(
-            self,
-            *,
-            client: httpx.AsyncClient = None,
-            browser: str = None,
-            speed_limit: Union[float, int, None] = None,
-            stream_retry: int = 5,
-            progress=None,
-            logger=None,
-            part_concurrency: int = 10,
+        self,
+        *,
+        client: httpx.AsyncClient = None,
+        browser: str = None,
+        speed_limit: Union[float, int, None] = None,
+        stream_retry: int = 5,
+        progress=None,
+        logger=None,
+        part_concurrency: int = 10,
     ):
         client = client or httpx.AsyncClient(**api.dft_client_settings)
         super(DownloaderDouyin, self).__init__(
@@ -33,7 +33,7 @@ class DownloaderDouyin(BaseDownloaderPart):
             part_concurrency=part_concurrency,
         )
 
-    async def get_video(self, url: str, path=Path('.'), image=False):
+    async def get_video(self, url: str, path=Path("."), image=False):
         """
         :cli: short: v
         :param url:
