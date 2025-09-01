@@ -521,11 +521,14 @@ async def _parse_bv_html(client: httpx.AsyncClient, url, html: str) -> VideoInfo
         pages.append(Page(p_name=p_name, p_url=p_url))
     # extract dash and flv_url
     dash, other = None, []
-    play_info = await req_retry(
-        client,
-        f"https://api.bilibili.com/x/player/wbi/playurl?bvid={bvid}&cid={cid}&fnval=4048",
-    )
-    play_info = json.loads(play_info.text)["data"]
+    try:
+        play_info = re.search('<script>window.__playinfo__=({.*?})</script><script>', html).groups()[0]
+    except:
+        play_info = await req_retry(
+            client,
+            f"https://api.bilibili.com/x/player/wbi/playurl?bvid={bvid}&cid={cid}&fnval=4048",
+        ).text
+    play_info = json.loads(play_info)["data"]
     try:
         dash = Dash.from_dict(play_info)
     except KeyError:

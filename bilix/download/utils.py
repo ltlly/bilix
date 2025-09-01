@@ -23,6 +23,7 @@ async def merge_files(file_list: List[Path], new_path: Path):
 
 
 _proxy_pool = None
+_proxy_pool_lock = None
 
 
 def init_proxy_pool(
@@ -38,7 +39,7 @@ def init_proxy_pool(
     #     max_fail=3,
     #     proxy_server="127.0.0.1",
     # )
-    global _proxy_pool
+    global _proxy_pool, _proxy_pool_lock
     from bilix.clashpool import ClashProxyPool
 
     _proxy_pool = ClashProxyPool(
@@ -47,6 +48,8 @@ def init_proxy_pool(
         proxy_port=proxy_port,
         secret=secret,
     )
+    import asyncio
+    _proxy_pool_lock = asyncio.Lock()
 
 
 async def req_retry(
@@ -69,13 +72,17 @@ async def req_retry(
             current_kwargs = kwargs.copy()
             if use_proxy and _proxy_pool is not None:
                 proxy_addr = f"http://{_proxy_pool.proxy_server}:{_proxy_pool.proxy_port}"
-                # 如果当前节点失败次数过多，切换节点
+                # 如果当前节点失败次数过多，切换节点（加锁）
                 if (
                     not _proxy_pool.current_node
                     or _proxy_pool.node_failures[_proxy_pool.current_node]
                     >= _proxy_pool.max_fail
                 ):
-                    _proxy_pool.switch_node()
+                    if _proxy_pool_lock is not None:
+                        async with _proxy_pool_lock:
+                            _proxy_pool.switch_node()
+                    else:
+                        _proxy_pool.switch_node()
                 async with httpx.AsyncClient(proxy=proxy_addr) as proxy_client:
                     res = await proxy_client.request(
                         method, url, follow_redirects=follow_redirects, **current_kwargs
@@ -93,18 +100,22 @@ async def req_retry(
             return res
 
         except httpx.TransportError as e:
-            msg = f"{method} {e.__class__.__name__} url: {url}"
+            msg = f"{method} {e.__class__.__name__} url: {url} {current_kwargs}"
             logger.warning(msg) if times > 0 else logger.debug(msg)
             pre_exc = e
             # 代理模式下遇到连接错误，标记节点失败并切换
             if use_proxy and _proxy_pool is not None and _proxy_pool.current_node:
                 if isinstance(e, httpx.ConnectError):
                     _proxy_pool.node_failures[_proxy_pool.current_node] += 1
-                    _proxy_pool.switch_node()
+                    if _proxy_pool_lock is not None:
+                        async with _proxy_pool_lock:
+                            _proxy_pool.switch_node()
+                    else:
+                        _proxy_pool.switch_node()
             await asyncio.sleep(0.1 * (times + 1))
 
         except httpx.HTTPStatusError as e:
-            logger.warning(f"{method} {e.response.status_code} {url}")
+            logger.warning(f"{method} {e.__class__.__name__} url: {url} {current_kwargs}")
             pre_exc = e
 
             if e.response.status_code == 412:
@@ -117,13 +128,18 @@ async def req_retry(
                 elif use_proxy and _proxy_pool is not None and _proxy_pool.current_node:
                     # 使用代理仍遇到412，增加失败计数并切换节点
                     _proxy_pool.node_failures[_proxy_pool.current_node] += 1
-                    _proxy_pool.switch_node()
+                    if _proxy_pool_lock is not None:
+                        async with _proxy_pool_lock:
+                            _proxy_pool.switch_node()
+                    else:
+                        _proxy_pool.switch_node()
                     await asyncio.sleep(1)
             else:
                 await asyncio.sleep(1.0 * (times + 1))
 
         except Exception as e:
-            logger.warning(f"{method} {e.__class__.__name__} 未知异常 url: {url}")
+            logger.warning(f"{method} {e.__class__.__name__} url: {url} {current_kwargs} {e}")
+            
             raise e
     logger.error(f"{method} 超过重复次数 {url_or_urls}")
     raise pre_exc

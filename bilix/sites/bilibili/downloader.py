@@ -560,7 +560,11 @@ class DownloaderBilibili(BaseDownloaderPart):
                 except (APIResourceError, APIUnsupportedError) as e:
                     return self.logger.warning(e)
             p_name = legal_title(video_info.pages[video_info.p].p_name)
-            task_name = legal_title(video_info.title, p_name)
+            if len(video_info.pages) == 1:
+                task_name = legal_title(video_info.title)
+            else:
+                task_name = legal_title(video_info.title, p_name)
+
             # if title is too long, use p_name as base_name
             base_name = (
                 p_name
